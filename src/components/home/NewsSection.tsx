@@ -1,60 +1,10 @@
+'use client'
+
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Paperclip } from 'lucide-react'
 import { getSupabase } from '@/lib/supabase'
 import type { Notice, News, Bid } from '@/types'
-
-async function fetchNotices(): Promise<Notice[]> {
-  const sb = getSupabase()
-  if (!sb) return []
-  try {
-    const { data } = await sb
-      .from('notice')
-      .select('id, title, author, status, attachment_url, created_at')
-      .order('created_at', { ascending: false })
-      .limit(5)
-    return (data as Notice[]) ?? []
-  } catch {
-    return []
-  }
-}
-
-async function fetchNews(): Promise<News[]> {
-  const sb = getSupabase()
-  if (!sb) return []
-  try {
-    const { data } = await sb
-      .from('news')
-      .select('id, title, author, image_url, created_at')
-      .order('created_at', { ascending: false })
-      .limit(5)
-    return (data as News[]) ?? []
-  } catch {
-    return []
-  }
-}
-
-async function fetchBids(): Promise<Bid[]> {
-  const sb = getSupabase()
-  if (!sb) return []
-  try {
-    const { data } = await sb
-      .from('bid')
-      .select('id, title, deadline, attachment_url, created_at')
-      .order('created_at', { ascending: false })
-      .limit(5)
-    return (data as Bid[]) ?? []
-  } catch {
-    return []
-  }
-}
-
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('ko-KR', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).replace(/\. /g, '.').replace(/\.$/, '')
-}
 
 const PLACEHOLDER_NOTICES: Notice[] = [
   { id: 1, title: '2025년 하반기 정보보안 교육 안내', author: '관리자', status: '공지', attachment_url: null, created_at: '2025-12-01' },
@@ -80,16 +30,41 @@ const PLACEHOLDER_BIDS: Bid[] = [
   { id: 5, title: '클라우드 인프라 운영 관리 사업 입찰', deadline: '2025-12-25', attachment_url: null, created_at: '2025-11-15' },
 ]
 
-export default async function NewsSection() {
-  const [notices, news, bids] = await Promise.all([
-    fetchNotices(),
-    fetchNews(),
-    fetchBids(),
-  ])
+function formatDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString('ko-KR', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).replace(/\. /g, '.').replace(/\.$/, '')
+}
 
-  const displayNotices = notices.length > 0 ? notices : PLACEHOLDER_NOTICES
-  const displayNews = news.length > 0 ? news : PLACEHOLDER_NEWS
-  const displayBids = bids.length > 0 ? bids : PLACEHOLDER_BIDS
+export default function NewsSection() {
+  const [notices, setNotices] = useState<Notice[]>(PLACEHOLDER_NOTICES)
+  const [news, setNews] = useState<News[]>(PLACEHOLDER_NEWS)
+  const [bids, setBids] = useState<Bid[]>(PLACEHOLDER_BIDS)
+
+  useEffect(() => {
+    const sb = getSupabase()
+    if (!sb) return
+
+    sb.from('notice')
+      .select('id, title, author, status, attachment_url, created_at')
+      .order('created_at', { ascending: false })
+      .limit(5)
+      .then(({ data }) => { if (data && data.length > 0) setNotices(data as Notice[]) })
+
+    sb.from('news')
+      .select('id, title, author, image_url, created_at')
+      .order('created_at', { ascending: false })
+      .limit(5)
+      .then(({ data }) => { if (data && data.length > 0) setNews(data as News[]) })
+
+    sb.from('bid')
+      .select('id, title, deadline, attachment_url, created_at')
+      .order('created_at', { ascending: false })
+      .limit(5)
+      .then(({ data }) => { if (data && data.length > 0) setBids(data as Bid[]) })
+  }, [])
 
   return (
     <section className="py-16 lg:py-24 bg-white" aria-labelledby="news-heading">
@@ -105,7 +80,7 @@ export default async function NewsSection() {
           <NewsList
             title="공지사항"
             href="/pr/notice"
-            items={displayNotices.map(n => ({
+            items={notices.map(n => ({
               id: n.id,
               title: n.title,
               date: formatDate(n.created_at),
@@ -116,7 +91,7 @@ export default async function NewsSection() {
           <NewsList
             title="농협정보소식"
             href="/pr/news"
-            items={displayNews.map(n => ({
+            items={news.map(n => ({
               id: n.id,
               title: n.title,
               date: formatDate(n.created_at),
@@ -126,7 +101,7 @@ export default async function NewsSection() {
           <NewsList
             title="입찰공고"
             href="/pr/bid"
-            items={displayBids.map(b => ({
+            items={bids.map(b => ({
               id: b.id,
               title: b.title,
               date: b.deadline ? `마감 ${formatDate(b.deadline)}` : formatDate(b.created_at),
