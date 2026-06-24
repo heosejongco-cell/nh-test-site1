@@ -2,6 +2,3 @@ name = "nh-web"
 compatibility_date = "2024-09-26"
 compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = ".open-next/assets"
-
-[build]
-command = "npm run pages:build"
